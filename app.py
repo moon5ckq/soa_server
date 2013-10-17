@@ -67,8 +67,9 @@ def search(query):
 	g_result = result
 	result = g_result.keys()
 	result = sorted(result, my_comp)
+	result.remove(-1)
 
-	return "<pre>" + json.dumps(result, indent = 4)	+ "</pre>"
+	return json.dumps(result)
 
 def rerank(result):
 	better_result = result
@@ -105,7 +106,7 @@ def network(query):
 	for e in edges:
 		x = e.split("-")
 		result["links"].append({"source":author_index[int(x[0])], "target":author_index[int(x[1])], "value":edges[e]})
-	return "<pre>" + json.dumps(result, indent=4) + "</pre>"
+	return json.dumps(result)
 
 @app.route("/coauthor/")
 def coauthor():
@@ -113,4 +114,4 @@ def coauthor():
 
 
 if __name__ == "__main__":
-	app.run(host = "0.0.0.0")
+	app.run(host = "0.0.0.0", port = 5923)
