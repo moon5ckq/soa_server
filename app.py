@@ -11,8 +11,8 @@ g_result = {}
 def hello():
 	return "hello world"
 
-URL_SEARCH_EXPERT = "http://arnetminer.org/services/search-expert?u=vivo&start=0&num=10000&q=%s"
-URL_SEARCH_PUBLICATION = "http://arnetminer.org/services/search-publication?u=vivo&start=0&num=10000&q=%s"
+URL_SEARCH_EXPERT = "http://arnetminer.org/services/search-expert?u=vivo&start=0&num=2000&q=%s"
+URL_SEARCH_PUBLICATION = "http://arnetminer.org/services/search-publication?u=vivo&start=0&num=2000&q=%s"
 URL_SEARCH_CONFERENCE = "http://arnetminer.org/services/search-conference?u=vivo&start=0&num=100&q=%s"
 URL_SEARCH_PUBLICATION_BY_AUTHOR = "http://arnetminer.org/services/publication/byperson/%s"
 
