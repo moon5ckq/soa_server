@@ -1,6 +1,11 @@
+import gevent
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask, render_template
 import urllib2
 import json
+import math
 
 app = Flask(__name__)
 app.debug = True
@@ -11,27 +16,27 @@ g_result = {}
 def hello():
 	return "hello world"
 
-URL_SEARCH_EXPERT = "http://arnetminer.org/services/search-expert?u=vivo&start=0&num=2000&q=%s"
-URL_SEARCH_PUBLICATION = "http://arnetminer.org/services/search-publication?u=vivo&start=0&num=2000&q=%s"
+URL_SEARCH_EXPERT = "http://arnetminer.org/services/search-expert?u=vivo&start=0&num=200&q=%s"
+URL_SEARCH_PUBLICATION = "http://arnetminer.org/services/search-publication?u=vivo&start=0&num=200&q=%s"
 URL_SEARCH_CONFERENCE = "http://arnetminer.org/services/search-conference?u=vivo&start=0&num=100&q=%s"
-URL_SEARCH_PUBLICATION_BY_AUTHOR = "http://arnetminer.org/services/publication/byperson/%s"
+URL_SEARCH_PUBLICATION_BY_AUTHOR = "http://arnetminer.org/services/publication/byperson/%d?u=vivo"
 
 def my_comp(u, v):
 	u1 = 0
 	if g_result[u].has_key("Citedby"):
-		u1 += g_result[u]["Citedby"] * 0.023
+		u1 += g_result[u]["Citedby"]
 	if g_result[u].has_key("rank"):
 		u1 += 10.0 / (g_result[u]["rank"] + 1)
 	if g_result[u].has_key("Edge"):
-		u1 += g_result[u]["Edge"] * 0.01
+		u1 += g_result[u]["Edge"]
 	
 	v1 = 0
 	if g_result[v].has_key("Citedby"):
-		v1 += g_result[v]["Citedby"] * 0.023
+		v1 += g_result[v]["Citedby"]
 	if g_result[v].has_key("rank"):
 		v1 += 10.0 / (g_result[v]["rank"] + 1)
 	if g_result[v].has_key("Edge"):
-		v1 += g_result[v]["Edge"] * 0.01
+		v1 += g_result[v]["Edge"]
 	
 	ret = 0
 	if u1 == v1:
@@ -42,6 +47,13 @@ def my_comp(u, v):
 		ret = 1
 	return ret
 
+
+def get_pub_usr(au):
+	if au == -1 :
+		return (-1, None)
+	response = urllib2.urlopen((URL_SEARCH_PUBLICATION_BY_AUTHOR % au).replace(" ", "%20")).read()
+	data_pub_usr = json.loads(response)
+	return (au, data_pub_usr)
 
 @app.route("/search/<query>")
 def search(query):
@@ -61,13 +73,26 @@ def search(query):
 					result[author]["Citedby"] = 0
 				if not result[author].has_key("Edge"):
 					result[author]["Edge"] = 0
-				result[author]["Citedby"] += pub["Citedby"]
+				result[author]["Citedby"] += math.log(pub["Citedby"] + 1)
 				result[author]["Edge"] += len(pub["AuthorIds"]) - 1
+	jobs = [gevent.spawn(get_pub_usr, au) for au in result.keys()]
+	gevent.joinall(jobs)
+	pubs = dict([job.value for job in jobs])
+	for au in result.keys():
+		if au == -1 :
+			continue
+		data_pub_usr = pubs[au]
+		for pub in data_pub_usr:
+			if not result[au].has_key("Citedby"):
+				result[au]["Citedby"] = 0
+			if type(pub) == dict and pub.has_key("Citedby"):
+				result[au]["Citedby"] += math.log(pub["Citedby"] + 1)
 	global g_result
 	g_result = result
 	result = g_result.keys()
 	result = sorted(result, my_comp)
-	result.remove(-1)
+	if g_result.has_key(-1):
+		result.remove(-1)
 
 	return json.dumps(result)
 
